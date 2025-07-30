@@ -6,6 +6,7 @@
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+import logging
 import requests
 
 from constants import BASE_URL
@@ -13,9 +14,19 @@ from filters import (
     allowlist_job_titles, block_list, 
     allowlist_locations, companies
 )
-from utilities import pretty_print_json
+from utilities import create_log_row, pretty_print_json
 
 ALL_JOBS = {}
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    handlers=[
+        logging.FileHandler("app.log"),        # Logs to file
+        logging.StreamHandler()                # Logs to stdout
+    ]
+)
+logger = logging.getLogger(__name__)
 
 def has_partial_match(string_to_search, list_to_compare=allowlist_job_titles):
     for str_in_list in list_to_compare:
@@ -112,6 +123,7 @@ def main():
         company_scraped_jobs = scrape_greenhouse_jobs(pages_to_scrape)
         ALL_JOBS[company] = company_scraped_jobs
     pretty_print_json(ALL_JOBS)
+    logger.info(create_log_row(ALL_JOBS))
 
 if __name__ == "__main__":
     print(f"Starting Script")
