@@ -4,6 +4,7 @@
         - output to csv
 """
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import requests
 
@@ -55,35 +56,43 @@ def generate_company_urls_to_scrape(company_slug, total_page_count) -> list:
         urls.append(formatted_urls)
     return urls
 
+def scrape_greenhouse_job_page(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    job_rows = soup.select("tr.job-post")
+    jobs = []
+
+    for row in job_rows:
+        title_tag = row.select_one("p.body.body--medium")
+        location_tag = row.select_one("p.body__secondary.body--metadata")
+        if title_tag:
+            for span in title_tag.select("span"):
+                span.decompose()
+
+            job_title = title_tag.get_text(strip=True).lower()
+            location = location_tag.get_text(strip=True).lower()
+
+            if has_partial_match(job_title) and not has_blocked_match(job_title) and has_partial_match(location, allowlist_locations):
+                link_tag = row.select_one("a")
+                job_url = link_tag["href"]
+                jobs.append({
+                    "job_title": job_title,
+                    "location": location,
+                    "link": job_url
+                })
+    return jobs
+
 def scrape_greenhouse_jobs(pages_to_scrape: list):
     jobs_at_company = []
-    for url in pages_to_scrape:
-        response = requests.get(url)
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Find all job post rows
-        job_rows = soup.select("tr.job-post")
-
-        for row in job_rows:
-            title_tag = row.select_one("p.body.body--medium")
-            location_tag = row.select_one("p.body__secondary.body--metadata") # body body__secondary body--metadata
-            if title_tag:
-                # Remove nested tags like "New"
-                for span in title_tag.select("span"):
-                    span.decompose()
-
-                job_title = title_tag.get_text(strip=True).lower()
-                location = location_tag.get_text(strip=True).lower()
-
-                if has_partial_match(job_title) and not has_blocked_match(job_title) and has_partial_match(location, allowlist_locations):
-                    link_tag = soup.select_one("tr.job-post a")
-                    job_url = link_tag["href"]
-                    jobs_at_company.append({
-                        "job_title": job_title,
-                        "location": location,
-                        "link": job_url
-                    })
+    
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(scrape_greenhouse_job_page, url) for url in pages_to_scrape]
+        for future in as_completed(futures):
+            try:
+                jobs_at_company.extend(future.result())
+            except Exception as e:
+                print(f"Error scraping a page: {e}")
+        
     jobs_at_company.append({
         "metadata": {
             "num_pages_scraped": len(pages_to_scrape),
@@ -92,11 +101,7 @@ def scrape_greenhouse_jobs(pages_to_scrape: list):
     })
     return jobs_at_company
 
-# def scrape_page(page_url):
-
-
 def main():
-
     ALL_JOBS["metadata"] = {
         "date_scraped": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "companies_scraped": companies
