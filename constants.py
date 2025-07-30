@@ -1,0 +1,1 @@
+BASE_URL = f"https://job-boards.greenhouse.io/"
