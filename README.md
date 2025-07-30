@@ -24,6 +24,7 @@
 
 ----------------------
 ## TODO:
+- Rearchitect to a factory/worker and client based pattern to potentially be able to scrape more than just Greenhouse
 - CSV support
 - Logging
 - Flags to enable features from terminal
