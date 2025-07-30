@@ -9,7 +9,7 @@ companies = [
     'clara',
     'coda',
     'covey',
-    'dropbox',
+    'dropbox', # Need to get to join button
     'endorsed',
     'erin',
     'ethyca',
@@ -41,12 +41,15 @@ companies = [
 
 allowlist_job_titles = [
     "senior software engineer",
-    "software engineer"
+    "software engineer",
+    "engineer"
 ]
 
 block_list = [
     "principal",
-    "staff"
+    "staff",
+    "manager",
+    "mobile"
 ]
 
 allowlist_locations = [

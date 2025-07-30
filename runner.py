@@ -2,12 +2,14 @@
     - Add flags in main
         - output to terminal
         - output to csv
+    - TODO: Chase down race condition
 """
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import logging
 import requests
+import time
 
 from constants import BASE_URL
 from filters import (
@@ -27,6 +29,7 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+session = requests.Session() # 22.59038019180298s
 
 def has_partial_match(string_to_search, list_to_compare=allowlist_job_titles):
     for str_in_list in list_to_compare:
@@ -51,7 +54,7 @@ def get_page_count(soup) -> int:
 
 def get_pages(company_slug) -> int:
     url = BASE_URL + company_slug
-    response = requests.get(url)
+    response = session.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
 
     if is_paginated(soup):
@@ -68,7 +71,7 @@ def generate_company_urls_to_scrape(company_slug, total_page_count) -> list:
     return urls
 
 def scrape_greenhouse_job_page(url):
-    response = requests.get(url)
+    response = session.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     job_rows = soup.select("tr.job-post")
     jobs = []
@@ -113,6 +116,7 @@ def scrape_greenhouse_jobs(pages_to_scrape: list):
     return jobs_at_company
 
 def main():
+    start = time.time()
     ALL_JOBS["metadata"] = {
         "date_scraped": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "companies_scraped": companies
@@ -122,8 +126,10 @@ def main():
         pages_to_scrape = generate_company_urls_to_scrape(company, total_page_count)
         company_scraped_jobs = scrape_greenhouse_jobs(pages_to_scrape)
         ALL_JOBS[company] = company_scraped_jobs
+    end = time.time()
     pretty_print_json(ALL_JOBS)
     logger.info(create_log_row(ALL_JOBS))
+    print(f"{end-start}")
 
 if __name__ == "__main__":
     print(f"Starting Script")
