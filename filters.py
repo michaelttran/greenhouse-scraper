@@ -1,7 +1,8 @@
 companies = [
     "attain", # single page
     "reddit",
-    "twilio" # paginated
+    "twilio", # paginated
+    "checkr"
 ]
 allowlist_job_titles = [
     "senior software engineer",
